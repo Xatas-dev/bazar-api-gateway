@@ -41,10 +41,16 @@ spring:
                 - Path=/bazar-chat/api/**
               filters:
                 - StripPrefix=1
+            - id: bazar-chat-ws
+              uri: ws://localhost:8082
+              predicates:
+                - Path=/ws/bazar-chat/api/**
+              filters:
+                - StripPrefix=2
           default-filters:
             - TokenRelay=
 logging:
   level:
     org:
       springframework:
-        security: trace
+        web: debug
