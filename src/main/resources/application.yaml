@@ -35,6 +35,12 @@ spring:
                 - Path=/bazar-persona/api/**
               filters:
                 - StripPrefix=1
+            - id: bazar-chat
+              uri: http://localhost:8082
+              predicates:
+                - Path=/bazar-chat/api/**
+              filters:
+                - StripPrefix=1
           default-filters:
             - TokenRelay=
 logging:
