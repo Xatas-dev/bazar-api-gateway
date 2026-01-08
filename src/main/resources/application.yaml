@@ -58,3 +58,6 @@ logging:
     org:
       springframework:
         web: ${LOGGING_LEVEL}
+management:
+  server:
+    port: 3031
