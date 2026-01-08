@@ -1,5 +1,8 @@
 server:
   port: 3030
+app:
+  frontend:
+    url: ${FRONTEND_URL}
 spring:
   application:
     name: api-gateway
@@ -8,13 +11,14 @@ spring:
       client:
         provider:
           keycloak:
-            issuer-uri: http://localhost:9999/realms/bazar-realm
+            issuer-uri: ${KC_EXTERNAL_URL}/realms/${KC_REALM}
+            jwk-set-uri: ${KC_URL}/realms/${KC_REALM}/protocol/openid-connect/certs
             user-name-attribute: preferred_username
         registration:
           keycloak:
             provider: keycloak
-            client-id: bazar-api-gateway
-            client-secret: rHuv9lvG36MQsSKVxLGa0G7kReZ7UTpP
+            client-id: ${CLIENT_ID}
+            client-secret: ${CLIENT_SECRET}
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/keycloak"
             scope: openid, profile, email
@@ -24,25 +28,25 @@ spring:
         webflux:
           routes:
             - id: bazar-space-service
-              uri: http://localhost:8080
+              uri: ${BAZAR_SPACE_URL}
               predicates:
                 - Path=/bazar-space/api/**
               filters:
                 - StripPrefix=1
             - id: bazar-persona
-              uri: http://localhost:8081
+              uri: ${BAZAR_PERSONA_URL}
               predicates:
                 - Path=/bazar-persona/api/**
               filters:
                 - StripPrefix=1
             - id: bazar-chat
-              uri: http://localhost:8082
+              uri: ${BAZAR_CHAT_URL}
               predicates:
                 - Path=/bazar-chat/api/**
               filters:
                 - StripPrefix=1
             - id: bazar-chat-ws
-              uri: ws://localhost:8082
+              uri: ${BAZAR_CHAT_WS_URL}
               predicates:
                 - Path=/ws/bazar-chat/api/**
               filters:
@@ -53,4 +57,4 @@ logging:
   level:
     org:
       springframework:
-        web: debug
+        web: ${LOGGING_LEVEL}

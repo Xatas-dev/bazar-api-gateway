@@ -1,5 +1,6 @@
 package org.bazar.api.gateway.config
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.cloud.gateway.route.RouteLocator
 import org.springframework.cloud.gateway.route.builder.PredicateSpec
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder
@@ -20,6 +21,9 @@ import java.util.function.Function
 @EnableWebFluxSecurity
 class SecurityConfiguration {
 
+    @Value($$"${app.frontend.url}")
+    private lateinit var frontUrl: String
+
     @Bean
     fun springSecurityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain {
         return http
@@ -30,7 +34,7 @@ class SecurityConfiguration {
             .oauth2Client { }
             .oauth2Login {
                 it.authenticationSuccessHandler(
-                    RedirectServerAuthenticationSuccessHandler("http://localhost:5173")
+                    RedirectServerAuthenticationSuccessHandler(frontUrl)
                 )
             }
             // Add this block to handle exceptions
