@@ -1,0 +1,72 @@
+name: bazar-api-gateway
+
+on:
+  push:
+    # 1. Trigger ONLY on release branches
+    branches:
+      - "release/**"
+  workflow_dispatch:
+env:
+  SERVICE_CONTEXT: ./
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/bazar-api-gateway
+
+jobs:
+  release-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # ======================================================
+      # STEP 1: Extract Version from Gradle
+      # We need Java just for this step to run './gradlew properties'
+      # ======================================================
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Extract Version from Gradle
+        id: get_version
+        working-directory: ${{ env.SERVICE_CONTEXT }}
+        run: |
+          # Make gradlew executable
+          chmod +x gradlew
+          
+          # Ask Gradle for the version property
+          # -q = quiet (no welcome message)
+          VERSION=$(./gradlew properties -q | grep "^version:" | awk '{print $2}')
+          
+          echo "Detected Gradle Version: $VERSION"
+          
+          # Save it to GitHub Environment Variables for the next steps
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
+      # ======================================================
+      # STEP 2: Standard Docker Build
+      # ======================================================
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.SERVICE_CONTEXT }}
+          file: ${{ env.SERVICE_CONTEXT }}/Dockerfile
+          push: true
+          # Use the extracted APP_VERSION variable here
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.APP_VERSION }}
+            ${{ env.IMAGE_NAME }}:latest
+
+          # Caching
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
