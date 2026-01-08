@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "org.bazar"
-version = "0.0.1-SNAPSHOT"
+version = "1.0.0"
 description = "api-gateway"
 
 java {
@@ -26,6 +26,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("io.github.oshai:kotlin-logging-jvm:5.1.0")
     implementation("org.springframework.cloud:spring-cloud-starter-gateway-server-webflux")
     implementation("org.springframework.boot:spring-boot-starter-security-oauth2-client")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

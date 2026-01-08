@@ -1,8 +1,10 @@
 package org.bazar.api.gateway.config
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.annotation.Order
 import org.springframework.http.HttpStatus
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
@@ -17,7 +19,6 @@ import org.springframework.security.web.server.util.matcher.ServerWebExchangeMat
 @EnableWebFluxSecurity
 class SecurityConfiguration(
     @Value($$"${management.server.port}") private val managementPort: Int,
-    @Value($$"${server.port}") private val serverPort: Int
 ) {
 
     @Value($$"${app.frontend.url}")
@@ -25,16 +26,9 @@ class SecurityConfiguration(
 
 
     @Bean
+    @Order(2)
     fun springSecurityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain {
         return http
-            .securityMatcher { exchange ->
-                val localPort = exchange.request.localAddress?.port ?: 0
-                if (localPort == serverPort) {
-                    match()
-                } else {
-                    notMatch()
-                }
-            }
             .csrf { it.disable() }
             .authorizeExchange { exchanges ->
                 exchanges.anyExchange().authenticated()
@@ -54,6 +48,7 @@ class SecurityConfiguration(
     }
 
     @Bean
+    @Order(1)
     fun publicSpringSecurityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain {
         return http
             .securityMatcher { exchange ->

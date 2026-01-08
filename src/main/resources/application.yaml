@@ -1,11 +1,12 @@
-server:
-  port: 3030
+
 app:
   frontend:
     url: ${FRONTEND_URL}
 spring:
   application:
     name: api-gateway
+  webflux:
+    base-path: /api
   security:
     oauth2:
       client:
@@ -32,32 +33,36 @@ spring:
               predicates:
                 - Path=/bazar-space/api/**
               filters:
-                - StripPrefix=1
+                - StripPrefix=2
             - id: bazar-persona
               uri: ${BAZAR_PERSONA_URL}
               predicates:
                 - Path=/bazar-persona/api/**
               filters:
-                - StripPrefix=1
+                - StripPrefix=2
             - id: bazar-chat
               uri: ${BAZAR_CHAT_URL}
               predicates:
                 - Path=/bazar-chat/api/**
               filters:
-                - StripPrefix=1
+                - StripPrefix=2
             - id: bazar-chat-ws
               uri: ${BAZAR_CHAT_WS_URL}
               predicates:
                 - Path=/ws/bazar-chat/api/**
               filters:
-                - StripPrefix=2
+                - StripPrefix=3
           default-filters:
             - TokenRelay=
 logging:
   level:
     org:
       springframework:
+        security: ${LOGGING_LEVEL}
         web: ${LOGGING_LEVEL}
 management:
   server:
-    port: 3031
+    port: 8090
+server:
+  port: 8080
+  forward-headers-strategy: framework

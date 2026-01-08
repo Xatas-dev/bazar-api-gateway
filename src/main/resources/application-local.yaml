@@ -1,0 +1,8 @@
+server:
+  port: 3030
+logging:
+  level:
+    org:
+      springframework:
+        security: trace
+        web: ${LOGGING_LEVEL}
