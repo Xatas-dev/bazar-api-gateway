@@ -66,9 +66,6 @@ graalvmNative {
             buildArgs.add("--verbose")
             buildArgs.add("--no-fallback")
             buildArgs.add("-H:+ReportExceptionStackTraces")
-
-            // Memory optimization
-            buildArgs.add("-march=native")
         }
     }
     // AOT configuration
