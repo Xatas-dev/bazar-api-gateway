@@ -1,9 +1,11 @@
 package org.bazar.api.gateway.config
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.security.oauth2.client.autoconfigure.reactive.ReactiveOAuth2ClientAutoConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.Profile
 import org.springframework.core.annotation.Order
 import org.springframework.http.HttpStatus
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
@@ -17,6 +19,7 @@ import org.springframework.security.web.server.util.matcher.ServerWebExchangeMat
 
 @Configuration
 @EnableWebFluxSecurity
+@Profile("!local && !test")
 class SecurityConfiguration(
     @Value($$"${management.server.port}") private val managementPort: Int,
 ) {
@@ -27,7 +30,7 @@ class SecurityConfiguration(
 
     @Bean
     @Order(2)
-    fun springSecurityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain {
+    fun mainSecurityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain {
         return http
             .csrf { it.disable() }
             .authorizeExchange { exchanges ->
