@@ -19,7 +19,6 @@ RUN ./gradlew dependencies --no-daemon
 # Copy source code
 COPY src ./src
 
-ENV SPRING_PROFILES_ACTIVE=local
 # Build native image
 RUN ./gradlew nativeCompile --no-daemon
 
