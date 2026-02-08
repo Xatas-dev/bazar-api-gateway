@@ -1,18 +1,19 @@
+
 plugins {
     kotlin("jvm") version "2.2.21"
     kotlin("plugin.spring") version "2.2.21"
     id("org.springframework.boot") version "4.0.1"
     id("io.spring.dependency-management") version "1.1.7"
+    id("org.graalvm.buildtools.native") version "0.11.1"
 }
 
 group = "org.bazar"
-version = "1.0.0"
-description = "api-gateway"
+version = "1.0.1"
+description = "bazar-api-gateway"
 
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 repositories {
@@ -44,10 +45,33 @@ dependencyManagement {
 
 kotlin {
     compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
         freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
     }
 }
 
+
+
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+graalvmNative {
+    binaries {
+        named("main") {
+            imageName.set("bazar-api-gateway")
+            mainClass.set("org.bazar.api.gateway.ApiGatewayApplicationKt")  // Adjust to your main class
+
+            // Optional: Add build args for optimization
+            buildArgs.add("--verbose")
+            buildArgs.add("--no-fallback")
+            buildArgs.add("-H:+ReportExceptionStackTraces")
+
+            // Memory optimization
+            buildArgs.add("-march=native")
+        }
+    }
+    // AOT configuration
+    testSupport.set(false)
+    toolchainDetection.set(false)
 }
