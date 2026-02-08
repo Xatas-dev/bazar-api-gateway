@@ -1,0 +1,26 @@
+name: Manual Jira Release
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release-to-jira:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Checkout the specific tag entered in the input
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0               # Required for Jira to read commit history
+
+      # 2. Run Jira Release
+      # We explicitly override the GITHUB_REF so the action knows
+      # this is a Tag Release, not a branch release.
+      - name: Create release in Jira
+        uses: Medsien/release-to-jira@main
+        with:
+          jira_server: 'https://grinbog015.atlassian.net'
+          jira_project: 'BZR'
+          jira_user: 'grinbog015@gmail.com'
+          jira_token: '${{ secrets.JIRA_TOKEN }}'
+

@@ -1,8 +1,6 @@
-server:
-  port: 3030
 app:
   frontend:
-    url: ${FRONTEND_URL}
+    url: ${FRONTEND_URL:http://localhost:5173}
 spring:
   application:
     name: api-gateway
@@ -11,14 +9,13 @@ spring:
       client:
         provider:
           keycloak:
-            issuer-uri: ${KC_EXTERNAL_URL}/realms/${KC_REALM}
-            jwk-set-uri: ${KC_URL}/realms/${KC_REALM}/protocol/openid-connect/certs
+            issuer-uri: ${KC_URL:http://localhost:9999}/realms/${KC_REALM:bazar-realm}
             user-name-attribute: preferred_username
         registration:
           keycloak:
             provider: keycloak
-            client-id: ${CLIENT_ID}
-            client-secret: ${CLIENT_SECRET}
+            client-id: ${CLIENT_ID:clientId}
+            client-secret: ${CLIENT_SECRET:clientSecret}
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/keycloak"
             scope: openid, profile, email
@@ -28,36 +25,45 @@ spring:
         webflux:
           routes:
             - id: bazar-space-service
-              uri: ${BAZAR_SPACE_URL}
+              uri: ${BAZAR_SPACE_URL:http://localhost:7080}
               predicates:
-                - Path=/bazar-space/api/**
+                - Path=/bazar-space/**
               filters:
                 - StripPrefix=1
+                - PrefixPath=/api
             - id: bazar-persona
-              uri: ${BAZAR_PERSONA_URL}
+              uri: ${BAZAR_PERSONA_URL:http://localhost:7081}
               predicates:
-                - Path=/bazar-persona/api/**
+                - Path=/bazar-persona/**
               filters:
                 - StripPrefix=1
+                - PrefixPath=/api
             - id: bazar-chat
-              uri: ${BAZAR_CHAT_URL}
+              uri: ${BAZAR_CHAT_URL:http://localhost:7082}
               predicates:
-                - Path=/bazar-chat/api/**
+                - Path=/bazar-chat/**
               filters:
                 - StripPrefix=1
+                - PrefixPath=/api
             - id: bazar-chat-ws
-              uri: ${BAZAR_CHAT_WS_URL}
+              uri: ${BAZAR_CHAT_WS_URL:ws://localhost:7083}
               predicates:
-                - Path=/ws/bazar-chat/api/**
+                - Path=/ws/bazar-chat/**
               filters:
                 - StripPrefix=2
+                - PrefixPath=/api
           default-filters:
             - TokenRelay=
+  threads:
+    virtual:
+      enabled: true
 logging:
   level:
     org:
-      springframework:
-        web: ${LOGGING_LEVEL}
+      bazar: ${LOGGING_LEVEL:DEBUG}
 management:
   server:
-    port: 3031
+    port: 8090
+server:
+  port: 8080
+  forward-headers-strategy: framework
