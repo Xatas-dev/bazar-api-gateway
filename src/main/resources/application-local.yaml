@@ -11,3 +11,6 @@ logging:
       springframework:
         security: trace
         web: ${LOGGING_LEVEL:DEBUG}
+management:
+  server:
+    port: 8091
