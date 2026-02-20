@@ -17,7 +17,7 @@ spring:
             client-id: ${CLIENT_ID:clientId}
             client-secret: ${CLIENT_SECRET:clientSecret}
             authorization-grant-type: authorization_code
-            redirect-uri: "{baseUrl}/api/login/oauth2/code/keycloak"
+            redirect-uri: ${OAUTH_REDIRECT_URI:{baseUrl}/api/login/oauth2/code/keycloak}
             scope: openid, profile, email
   cloud:
     gateway:
@@ -61,6 +61,9 @@ logging:
   level:
     org:
       bazar: ${LOGGING_LEVEL:DEBUG}
+      springframework:
+        security: ${LOGGING_LEVEL:DEBUG}
+        web: ${LOGGING_LEVEL:DEBUG}
 management:
   server:
     port: 8090
