@@ -52,6 +52,13 @@ spring:
               filters:
                 - StripPrefix=2
                 - PrefixPath=/api
+            - id: bazar-storage
+              uri: ${BAZAR_STORAGE_URL:http://localhost:7084}
+              predicates:
+                - Path=/bazar-storage/**
+              filters:
+                - StripPrefix=1
+                - PrefixPath=/api
           default-filters:
             - TokenRelay=
   threads:
