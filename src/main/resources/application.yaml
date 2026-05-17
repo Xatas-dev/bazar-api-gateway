@@ -25,6 +25,13 @@ spring:
         webflux:
           routes:
             - id: bazar-space-service
+              uri: ${BAZAR_AUTHORIZATION_URL:http://localhost:7079}
+              predicates:
+                - Path=/bazar-authorization/**
+              filters:
+                - StripPrefix=1
+                - PrefixPath=/api
+            - id: bazar-space-service
               uri: ${BAZAR_SPACE_URL:http://localhost:7080}
               predicates:
                 - Path=/bazar-space/**
@@ -51,6 +58,13 @@ spring:
                 - Path=/ws/bazar-chat/**
               filters:
                 - StripPrefix=2
+                - PrefixPath=/api
+            - id: bazar-storage
+              uri: ${BAZAR_STORAGE_URL:http://localhost:7084}
+              predicates:
+                - Path=/bazar-storage/**
+              filters:
+                - StripPrefix=1
                 - PrefixPath=/api
           default-filters:
             - TokenRelay=

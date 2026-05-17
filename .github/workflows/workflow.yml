@@ -30,6 +30,7 @@ jobs:
         uses: fkirc/skip-duplicate-actions@v5
         with:
           skip_after_successful_duplicate: 'true'
+          do_not_skip: '["push", "pull_request", "workflow_dispatch", "schedule"]'
 
   # CODE SCAN
   analyze:
@@ -117,9 +118,28 @@ jobs:
           echo "APP_VERSION=$VERSION" >> $GITHUB_OUTPUT
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
+      - name: Determine image tags and push flag
+        id: docker_pre_job
+        run: |
+          PUSH_DOCKER_IMAGE="false"
+          TAGS=""
+
+          if [[ "${{ github.event_name }}" == "push" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ github.ref_name }}" == "master" ]]; then
+              TAGS="${{ env.IMAGE_NAME }}:${{ env.APP_VERSION }},${{ env.IMAGE_NAME }}:latest"
+              PUSH_DOCKER_IMAGE="true"
+            elif [[ "${{ github.ref_name }}" == "dev" ]]; then
+              TAGS="${{ env.IMAGE_NAME }}:${{ env.APP_VERSION }}-SNAPSHOT"
+              PUSH_DOCKER_IMAGE="true"
+            fi
+          fi
+
+          echo "PUSH_DOCKER_IMAGE=$PUSH_DOCKER_IMAGE" >> $GITHUB_OUTPUT
+          echo "TAGS=$TAGS" >> $GITHUB_OUTPUT
+          echo "Push: $PUSH_DOCKER_IMAGE"
+          echo "Tags: $TAGS"
       - name: Login to Docker Hub
-        if: github.event_name == 'push' && github.ref_name == 'master' || github.event_name == 'workflow_dispatch'
+        if: steps.docker_pre_job.outputs.PUSH_DOCKER_IMAGE == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -130,11 +150,9 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name == 'push' && github.ref_name == 'master' || github.event_name == 'workflow_dispatch' }}
-          load: ${{ !(github.event_name == 'push' && github.ref_name == 'master') && !(github.event_name == 'workflow_dispatch') }}
-          tags: |
-            ${{ env.IMAGE_NAME }}:${{ env.APP_VERSION }}
-            ${{ env.IMAGE_NAME }}:latest
+          push: ${{ steps.docker_pre_job.outputs.PUSH_DOCKER_IMAGE == 'true' }}
+          load: ${{ steps.docker_pre_job.outputs.PUSH_DOCKER_IMAGE != 'true' }}
+          tags: ${{ steps.docker_pre_job.outputs.TAGS }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
   create-tag:
