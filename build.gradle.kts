@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "org.bazar"
-version = "1.0.2"
+version = "1.0.3"
 description = "bazar-api-gateway"
 
 java {
