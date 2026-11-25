@@ -9,15 +9,15 @@ spring:
       client:
         provider:
           keycloak:
-            issuer-uri: ${KC_URL:http://localhost:9999}/realms/${KC_REALM:bazar-realm}
+            issuer-uri: ${KC_URL}
             user-name-attribute: preferred_username
         registration:
           keycloak:
             provider: keycloak
-            client-id: ${CLIENT_ID:clientId}
-            client-secret: ${CLIENT_SECRET:clientSecret}
+            client-id: ${CLIENT_ID}
+            client-secret: ${CLIENT_SECRET}
             authorization-grant-type: authorization_code
-            redirect-uri: ${OAUTH_REDIRECT_URI:{baseUrl}/api/login/oauth2/code/keycloak}
+            redirect-uri: ${OAUTH_REDIRECT_URI}
             scope: openid, profile, email
   cloud:
     gateway:
@@ -25,42 +25,42 @@ spring:
         webflux:
           routes:
             - id: bazar-space-service
-              uri: ${BAZAR_AUTHORIZATION_URL:http://localhost:7079}
+              uri: ${BAZAR_AUTHORIZATION_URL}
               predicates:
                 - Path=/bazar-authorization/**
               filters:
                 - StripPrefix=1
                 - PrefixPath=/api
             - id: bazar-space-service
-              uri: ${BAZAR_SPACE_URL:http://localhost:7080}
+              uri: ${BAZAR_SPACE_URL}
               predicates:
                 - Path=/bazar-space/**
               filters:
                 - StripPrefix=1
                 - PrefixPath=/api
             - id: bazar-persona
-              uri: ${BAZAR_PERSONA_URL:http://localhost:7081}
+              uri: ${BAZAR_PERSONA_URL}
               predicates:
                 - Path=/bazar-persona/**
               filters:
                 - StripPrefix=1
                 - PrefixPath=/api
             - id: bazar-chat
-              uri: ${BAZAR_CHAT_URL:http://localhost:7082}
+              uri: ${BAZAR_CHAT_URL}
               predicates:
                 - Path=/bazar-chat/**
               filters:
                 - StripPrefix=1
                 - PrefixPath=/api
             - id: bazar-chat-ws
-              uri: ${BAZAR_CHAT_WS_URL:ws://localhost:7083}
+              uri: ${BAZAR_CHAT_WS_URL}
               predicates:
                 - Path=/ws/bazar-chat/**
               filters:
                 - StripPrefix=2
                 - PrefixPath=/api
             - id: bazar-storage
-              uri: ${BAZAR_STORAGE_URL:http://localhost:7084}
+              uri: ${BAZAR_STORAGE_URL}
               predicates:
                 - Path=/bazar-storage/**
               filters:

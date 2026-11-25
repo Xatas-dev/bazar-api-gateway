@@ -3,6 +3,64 @@ spring:
     exclude:
       - org.springframework.boot.security.oauth2.client.autoconfigure.reactive.ReactiveOAuth2ClientAutoConfiguration
       - org.springframework.boot.security.oauth2.client.autoconfigure.reactive.ReactiveOAuth2ClientWebSecurityAutoConfiguration
+  security:
+    oauth2:
+      client:
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:9999/realms/test-realm
+        registration:
+          keycloak:
+            client-id: test-client-id
+            client-secret: test-client-secret
+            redirect-uri: "{baseUrl}/api/login/oauth2/code/keycloak"
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: bazar-space-service
+              uri: http://localhost:7079
+              predicates:
+                - Path=/bazar-authorization/**
+              filters:
+                - StripPrefix=1
+                - PrefixPath=/api
+            - id: bazar-space-service
+              uri: http://localhost:7080
+              predicates:
+                - Path=/bazar-space/**
+              filters:
+                - StripPrefix=1
+                - PrefixPath=/api
+            - id: bazar-persona
+              uri: http://localhost:7081
+              predicates:
+                - Path=/bazar-persona/**
+              filters:
+                - StripPrefix=1
+                - PrefixPath=/api
+            - id: bazar-chat
+              uri: http://localhost:7082
+              predicates:
+                - Path=/bazar-chat/**
+              filters:
+                - StripPrefix=1
+                - PrefixPath=/api
+            - id: bazar-chat-ws
+              uri: ws://localhost:7083
+              predicates:
+                - Path=/ws/bazar-chat/**
+              filters:
+                - StripPrefix=2
+                - PrefixPath=/api
+            - id: bazar-storage
+              uri: http://localhost:7084
+              predicates:
+                - Path=/bazar-storage/**
+              filters:
+                - StripPrefix=1
+                - PrefixPath=/api
 server:
   port: 3030
 logging:

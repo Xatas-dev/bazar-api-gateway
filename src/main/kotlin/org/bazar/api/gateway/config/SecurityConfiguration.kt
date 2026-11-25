@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.core.annotation.Order
+import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
@@ -36,7 +37,9 @@ class SecurityConfiguration(
         return http
             .csrf { it.disable() }
             .authorizeExchange { exchanges ->
-                exchanges.anyExchange().authenticated()
+                exchanges
+                    .pathMatchers(HttpMethod.GET, "/bazar-space/v1/spaces/by-code/*").permitAll()
+                    .anyExchange().authenticated()
             }
             .oauth2Client { }
             .oauth2Login {
