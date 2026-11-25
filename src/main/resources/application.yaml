@@ -84,3 +84,8 @@ management:
 server:
   port: 8080
   forward-headers-strategy: framework
+  reactive:
+    session:
+      timeout: 7d
+      cookie:
+        max-age: 30d
