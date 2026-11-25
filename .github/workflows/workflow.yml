@@ -8,16 +8,15 @@ permissions:
 on:
   push:
     branches:
-      - dev
       - master
+      - 'release/**'
   pull_request:
     branches:
-      - dev
       - master
-  workflow_dispatch: 
+      - 'release/**'
+  workflow_dispatch:
 
 env:
-  SERVICE_CONTEXT: ./
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/bazar-api-gateway
 
 jobs:
@@ -30,30 +29,59 @@ jobs:
         uses: fkirc/skip-duplicate-actions@v5
         with:
           skip_after_successful_duplicate: 'true'
-          do_not_skip: '["push", "pull_request", "workflow_dispatch", "schedule"]'
+          do_not_skip: '["push", "pull_request", "workflow_dispatch"]'
 
-  # CODE SCAN
+  build:
+    name: Build & Test
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      app-version: ${{ steps.version.outputs.APP_VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle (with cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep -E '^version\s*=' build.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Detected version: $VERSION"
+
+      - name: Run tests
+        run: ./gradlew test --no-daemon
+
+      - name: Publish test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            build/reports/tests/
+            build/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ---------- Code scanning runs in parallel with build ----------
   analyze:
     name: Analyze (${{ matrix.language }})
     needs: pre_job
     if: needs.pre_job.outputs.should_skip != 'true'
-    # Runner size impacts CodeQL analysis time. To learn more, please see:
-    #   - https://gh.io/recommended-hardware-resources-for-running-codeql
-    #   - https://gh.io/supported-runners-and-hardware-resources
-    #   - https://gh.io/using-larger-runners (GitHub.com only)
-    # Consider using larger runners or machines with greater resources for possible analysis time improvements.
-    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     permissions:
-      # required for all workflows
       security-events: write
-
-      # required to fetch internal or private CodeQL packs
       packages: read
-
-      # only required for workflows in private repositories
       actions: read
       contents: read
-
     strategy:
       fail-fast: false
       matrix:
@@ -62,118 +90,79 @@ jobs:
             build-mode: none
           - language: java-kotlin
             build-mode: autobuild
-        # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'
-        # Use `c-cpp` to analyze code written in C, C++ or both
-        # Use 'java-kotlin' to analyze code written in Java, Kotlin or both
-        # Use 'javascript-typescript' to analyze code written in JavaScript, TypeScript or both
-        # To learn more about changing the languages that are analyzed or customizing the build mode for your analysis,
-        # see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning.
-        # If you are analyzing a compiled language, you can modify the 'build-mode' for that language to customize how
-        # your codebase is analyzed, see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # Add any setup steps before running the `github/codeql-action/init` action.
-      # This includes steps like installing compilers or runtimes (`actions/setup-node`
-      # or others). This is typically only required for manual builds.
-      # - name: Setup runtime (example)
-      #   uses: actions/setup-example@v1
-
-      # Initializes the CodeQL tools for scanning.
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          # If you wish to specify custom queries, you can do so here or in a config file.
-          # By default, queries listed here will override any specified in a config file.
-          # Prefix the list here with "+" to use these queries and those in the config file.
-
-          # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
-          # queries: security-extended,security-and-quality
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+      - uses: github/codeql-action/analyze@v4
         with:
-          category: "/language:${{matrix.language}}"
-  docker-build-and-publish:
-    needs: pre_job
+          category: "/language:${{ matrix.language }}"
+
+  # ---------- Docker: native image is compiled inside the Dockerfile ----------
+  publish:
+    needs: [pre_job, build]
     runs-on: ubuntu-latest
     outputs:
-      app-version: ${{ steps.get_version.outputs.APP_VERSION }}
+      app-version: ${{ needs.build.outputs.app-version }}
     if: |
-      ${{ needs.pre_job.outputs.should_skip != 'true' && (
-      github.event_name == 'push' ||
-      github.event_name == 'pull_request' ||
-      github.event_name == 'workflow_dispatch') }}
-    
+      needs.pre_job.outputs.should_skip != 'true' &&
+      (github.event_name == 'push' ||
+       github.event_name == 'pull_request' ||
+       github.event_name == 'workflow_dispatch')
     steps:
       - uses: actions/checkout@v4
-      - name: Extract Version
-        id: get_version
-        run: |
-          VERSION=$(grep "^version\s*=" build.gradle.kts | sed -E 's/.*version\s*=\s*"([^"]+)".*/\1/')
-          echo "Detected version: $VERSION"
-          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
-          echo "APP_VERSION=$VERSION" >> $GITHUB_OUTPUT
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Determine image tags and push flag
+
+      - name: Determine tags and push flag
         id: docker_pre_job
         run: |
-          PUSH_DOCKER_IMAGE="false"
-          TAGS=""
-
-          if [[ "${{ github.event_name }}" == "push" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            if [[ "${{ github.ref_name }}" == "master" ]]; then
-              TAGS="${{ env.IMAGE_NAME }}:${{ env.APP_VERSION }},${{ env.IMAGE_NAME }}:latest"
-              PUSH_DOCKER_IMAGE="true"
-            elif [[ "${{ github.ref_name }}" == "dev" ]]; then
-              TAGS="${{ env.IMAGE_NAME }}:${{ env.APP_VERSION }}-SNAPSHOT"
-              PUSH_DOCKER_IMAGE="true"
+          PUSH="false"; TAGS=""
+          if [[ "${{ github.event_name }}" == "push" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ github.ref_name }}" == release/* ]]; then
+              TAGS="${{ env.IMAGE_NAME }}:${{ needs.build.outputs.app-version }},${{ env.IMAGE_NAME }}:latest"
+              PUSH="true"
+            elif [[ "${{ github.ref_name }}" == "master" ]]; then
+              TAGS="${{ env.IMAGE_NAME }}:${{ needs.build.outputs.app-version }}-SNAPSHOT"
+              PUSH="true"
             fi
           fi
+          {
+            echo "PUSH_DOCKER_IMAGE=$PUSH"
+            echo "TAGS=$TAGS"
+          } >> "$GITHUB_OUTPUT"
+          echo "Push=$PUSH Tags=$TAGS"
 
-          echo "PUSH_DOCKER_IMAGE=$PUSH_DOCKER_IMAGE" >> $GITHUB_OUTPUT
-          echo "TAGS=$TAGS" >> $GITHUB_OUTPUT
-          echo "Push: $PUSH_DOCKER_IMAGE"
-          echo "Tags: $TAGS"
+      - uses: docker/setup-buildx-action@v3
+
       - name: Login to Docker Hub
         if: steps.docker_pre_job.outputs.PUSH_DOCKER_IMAGE == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
+
+      - name: Build native image & push
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: ${{ steps.docker_pre_job.outputs.PUSH_DOCKER_IMAGE == 'true' }}
-          load: ${{ steps.docker_pre_job.outputs.PUSH_DOCKER_IMAGE != 'true' }}
-          tags: ${{ steps.docker_pre_job.outputs.TAGS }}
+          load:  ${{ steps.docker_pre_job.outputs.PUSH_DOCKER_IMAGE != 'true' }}
+          tags:  ${{ steps.docker_pre_job.outputs.TAGS }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to:   type=gha,mode=max
+
   create-tag:
-    needs: docker-build-and-publish
+    needs: publish
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/heads/release/')
     steps:
       - uses: actions/checkout@v4
       - name: Create or Update Git Tag
-        if: github.ref == 'refs/heads/master'
         run: |
-          TAG_NAME="bapi-${{ needs.docker-build-and-publish.outputs.app-version }}"
-
-          # Configure git user (required for tagging)
-          git config user.name "github-actions[bot]"
+          TAG_NAME="bapi-${{ needs.publish.outputs.app-version }}"
+          git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          echo "Force updating tag $TAG_NAME to point to current commit..."
-
-          # -f: Force (overwrite if exists)
-          # -a: Annotated tag (stores history/message)
           git tag -fa "$TAG_NAME" -m "Auto-tag release $TAG_NAME"
-
-          # Push with --force to update the remote tag
           git push origin -f "$TAG_NAME"
