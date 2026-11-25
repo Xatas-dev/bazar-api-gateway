@@ -27,9 +27,9 @@ import org.springframework.core.env.ConfigurableEnvironment
 class RequiredEnvironmentVariablesInitializer : ApplicationContextInitializer<ConfigurableApplicationContext> {
 
     override fun initialize(applicationContext: ConfigurableApplicationContext) {
+        if (System.getProperty(AOT_PROCESSING_PROPERTY).toBoolean()) return
+
         applicationContext.addBeanFactoryPostProcessor(object : BeanDefinitionRegistryPostProcessor {
-            // Context-registered registry post-processors run before any bean-defined ones
-            // (e.g. ConfigurationClassPostProcessor, where Feign already parses its URLs).
             override fun postProcessBeanDefinitionRegistry(registry: BeanDefinitionRegistry) =
                 validate(applicationContext.environment)
         })
@@ -62,6 +62,9 @@ class RequiredEnvironmentVariablesInitializer : ApplicationContextInitializer<Co
             ?.toString()
 
     private companion object {
+        /** Set to `true` by Spring's `AbstractAotProcessor` while generating AOT sources. */
+        const val AOT_PROCESSING_PROPERTY = "spring.aot.processing"
+
         /** Matches `${NAME}` but not `${NAME:default}`. */
         val PLACEHOLDER_WITHOUT_DEFAULT = Regex("""\$\{([^:}]+)}""")
     }
